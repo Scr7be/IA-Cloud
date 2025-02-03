@@ -1,2 +1,4 @@
 Flask==3.0.0
+scikit-learn
+scipy
 Werkzeug==3.0.1

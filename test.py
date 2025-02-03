@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for
-import re
 import os
 from werkzeug.utils import secure_filename
+from sklearn.feature_extraction.text import TfidfVectorizer
+from scipy.stats import pearsonr
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'documents'
@@ -50,23 +51,34 @@ def load_documents():
                 documents[doc_id] = f.read()
 
 def search_documents(query):
-    """Rechercher dans les documents"""
-    results = []
-    query = query.lower()
+    """Rechercher dans les documents en utilisant TF-IDF et la corrélation de Pearson"""
+    # Préparer les textes comme dans le script original
+    texts = [query, documents["document1"], documents["document2"], documents["document3"]]
     
-    for doc_id, content in documents.items():
-        if query in content.lower():
-            words = content.split()
-            for i, word in enumerate(words):
-                if query in word.lower():
-                    start = max(0, i - 10)
-                    end = min(len(words), i + 10)
-                    excerpt = " ".join(words[start:end]) + "..."
-                    results.append({
-                        'doc_id': doc_id,
-                        'excerpt': excerpt
-                    })
-                    break
+    # Étape 1 : Vectorisation TF-IDF 
+    vect = TfidfVectorizer() 
+    tfidf_mat = vect.fit_transform(texts).toarray()
+
+    query_tf_idf = tfidf_mat[0]
+    corpus = tfidf_mat[1:]
+
+    # Corrélation de pearson
+    results = []
+    for id, document_tf_idf in enumerate(corpus):
+        pearson_corr, _ = pearsonr(query_tf_idf, document_tf_idf)
+        if pearson_corr > 0.20:
+            # Convertir la corrélation en pourcentage (de 0.20 à 1.00 -> 0% à 100%)
+            percentage = round(((pearson_corr - 0.20) / 0.80) * 100)
+            # Limiter le pourcentage entre 0 et 100
+            percentage = max(0, min(100, percentage))
+            
+            result = {
+                "doc_id": f"document{id+1}",
+                "excerpt": texts[id+1][:200] + "...",
+                "similarity": round(pearson_corr, 3),
+                "percentage": percentage
+            }
+            results.append(result)
     
     return results
 
