@@ -296,7 +296,7 @@
             <div class="results">
                 {% for result in results %}
                 <div class="result-item">
-                    <h3>Document {{ result.doc_id[-1] if result.doc_id.startswith('document') else result.doc_id }} (Similarité : {{ result.similarity }})</h3>
+                    <h3>{{ result.doc_id }}</h3>
                     <p>Similarité : {{ result.similarity }} ({{ result.percentage }}% pertinent)</p>
                     <div class="progress-bar">
                         <div class="progress-fill" style="width: {{ result.percentage }}%"></div>

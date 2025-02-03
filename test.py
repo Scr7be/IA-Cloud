@@ -52,8 +52,23 @@ def load_documents():
 
 def search_documents(query):
     """Rechercher dans les documents en utilisant TF-IDF et la corrélation de Pearson"""
-    # Préparer les textes comme dans le script original
-    texts = [query, documents["document1"], documents["document2"], documents["document3"]]
+    # Charger tous les documents
+    all_documents = {}
+    
+    # Ajouter les documents par défaut
+    all_documents.update(documents)
+    
+    # Ajouter les documents du dossier
+    for filename in os.listdir(app.config['UPLOAD_FOLDER']):
+        if filename.endswith('.txt'):
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                doc_id = os.path.splitext(filename)[0]
+                all_documents[doc_id] = f.read()
+    
+    # Préparer les textes
+    texts = [query] + list(all_documents.values())
+    doc_ids = ['query'] + list(all_documents.keys())
     
     # Étape 1 : Vectorisation TF-IDF 
     vect = TfidfVectorizer(
@@ -65,6 +80,7 @@ def search_documents(query):
     
     # Afficher les tokens pour le débogage
     print(f"Recherche pour: '{query}'")
+    print(f"Nombre de documents analysés: {len(texts)}")
     
     tfidf_mat = vect.fit_transform(texts).toarray()
     
@@ -81,7 +97,8 @@ def search_documents(query):
     
     for id, document_tf_idf in enumerate(corpus):
         pearson_corr, _ = pearsonr(query_tf_idf, document_tf_idf)
-        print(f"Score pour document{id+1}: {pearson_corr}")
+        doc_id = doc_ids[id + 1]  # +1 car on saute la requête
+        print(f"Score pour {doc_id}: {pearson_corr}")
         
         # Ajuster le seuil en fonction de la longueur du mot
         threshold = min_threshold
@@ -93,7 +110,7 @@ def search_documents(query):
             percentage = max(0, min(100, percentage))
             
             # Trouver le contexte du mot recherché
-            doc_text = texts[id+1]
+            doc_text = texts[id + 1]
             start_pos = doc_text.lower().find(query.lower())
             if start_pos != -1:
                 start = max(0, start_pos - 100)
@@ -103,13 +120,15 @@ def search_documents(query):
                 excerpt = doc_text[:200] + "..."
             
             result = {
-                "doc_id": f"document{id+1}",
+                "doc_id": doc_id,
                 "excerpt": excerpt,
                 "similarity": round(pearson_corr, 3),
                 "percentage": percentage
             }
             results.append(result)
     
+    # Trier les résultats par similarité
+    results.sort(key=lambda x: x['similarity'], reverse=True)
     return results
 
 @app.route('/')
