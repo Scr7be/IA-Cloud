@@ -56,19 +56,29 @@ def search_documents(query):
     texts = [query, documents["document1"], documents["document2"], documents["document3"]]
     
     # Étape 1 : Vectorisation TF-IDF 
-    vect = TfidfVectorizer() 
+    vect = TfidfVectorizer(
+        min_df=1,  # Inclure tous les mots, même rares
+        stop_words=None,  # Ne pas exclure les mots communs
+        lowercase=True  # Convertir en minuscules
+    ) 
     tfidf_mat = vect.fit_transform(texts).toarray()
 
     query_tf_idf = tfidf_mat[0]
     corpus = tfidf_mat[1:]
 
-    # Corrélation de pearson
+    # Corrélation de pearson avec seuil adaptatif
     results = []
+    min_threshold = 0.05  # Seuil minimum plus bas pour les mots courts
+    
     for id, document_tf_idf in enumerate(corpus):
         pearson_corr, _ = pearsonr(query_tf_idf, document_tf_idf)
-        if pearson_corr > 0.20:
-            # Convertir la corrélation en pourcentage (de 0.20 à 1.00 -> 0% à 100%)
-            percentage = round(((pearson_corr - 0.20) / 0.80) * 100)
+        
+        # Ajuster le seuil en fonction de la longueur du mot
+        threshold = min_threshold if len(query.strip()) <= 4 else 0.20
+        
+        if pearson_corr > threshold:
+            # Convertir la corrélation en pourcentage (de threshold à 1.00 -> 0% à 100%)
+            percentage = round(((pearson_corr - threshold) / (1 - threshold)) * 100)
             # Limiter le pourcentage entre 0 et 100
             percentage = max(0, min(100, percentage))
             
