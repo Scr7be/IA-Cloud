@@ -59,22 +59,32 @@ def search_documents(query):
     vect = TfidfVectorizer(
         min_df=1,  # Inclure tous les mots, même rares
         stop_words=None,  # Ne pas exclure les mots communs
-        lowercase=True  # Convertir en minuscules
+        lowercase=True,  # Convertir en minuscules
+        token_pattern=r'(?u)\b\w+\b'  # Motif simple pour la tokenization
     ) 
+    
+    # Afficher les tokens pour le débogage
+    print(f"Recherche pour: '{query}'")
+    
     tfidf_mat = vect.fit_transform(texts).toarray()
-
+    
+    # Afficher les features (mots) pour le débogage
+    feature_names = vect.get_feature_names_out()
+    print(f"Mots analysés: {', '.join(feature_names)}")
+    
     query_tf_idf = tfidf_mat[0]
     corpus = tfidf_mat[1:]
 
     # Corrélation de pearson avec seuil adaptatif
     results = []
-    min_threshold = 0.05  # Seuil minimum plus bas pour les mots courts
+    min_threshold = 0.01  # Seuil encore plus bas
     
     for id, document_tf_idf in enumerate(corpus):
         pearson_corr, _ = pearsonr(query_tf_idf, document_tf_idf)
+        print(f"Score pour document{id+1}: {pearson_corr}")
         
         # Ajuster le seuil en fonction de la longueur du mot
-        threshold = min_threshold if len(query.strip()) <= 4 else 0.20
+        threshold = min_threshold
         
         if pearson_corr > threshold:
             # Convertir la corrélation en pourcentage (de threshold à 1.00 -> 0% à 100%)
@@ -82,9 +92,19 @@ def search_documents(query):
             # Limiter le pourcentage entre 0 et 100
             percentage = max(0, min(100, percentage))
             
+            # Trouver le contexte du mot recherché
+            doc_text = texts[id+1]
+            start_pos = doc_text.lower().find(query.lower())
+            if start_pos != -1:
+                start = max(0, start_pos - 100)
+                end = min(len(doc_text), start_pos + len(query) + 100)
+                excerpt = "..." + doc_text[start:end] + "..."
+            else:
+                excerpt = doc_text[:200] + "..."
+            
             result = {
                 "doc_id": f"document{id+1}",
-                "excerpt": texts[id+1][:200] + "...",
+                "excerpt": excerpt,
                 "similarity": round(pearson_corr, 3),
                 "percentage": percentage
             }
