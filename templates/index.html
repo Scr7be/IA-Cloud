@@ -12,6 +12,8 @@
             --text-color: #2c3e50;
             --border-radius: 8px;
             --box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            --success-color: #2ecc71;
+            --error-color: #e74c3c;
         }
 
         * {
@@ -54,7 +56,7 @@
             padding: 2rem 0;
         }
 
-        .search-container {
+        .search-container, .upload-container {
             background: white;
             border-radius: var(--border-radius);
             box-shadow: var(--box-shadow);
@@ -63,7 +65,7 @@
             margin: 0 auto 2rem;
         }
 
-        .search-form {
+        .search-form, .upload-form {
             display: flex;
             gap: 1rem;
         }
@@ -81,6 +83,36 @@
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+        }
+
+        .file-input-container {
+            flex: 1;
+            position: relative;
+        }
+
+        .file-input-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.8rem 1rem;
+            background-color: white;
+            border: 2px dashed var(--primary-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-label:hover {
+            background-color: rgba(74, 144, 226, 0.1);
+        }
+
+        input[type="file"] {
+            position: absolute;
+            width: 0.1px;
+            height: 0.1px;
+            opacity: 0;
+            overflow: hidden;
+            z-index: -1;
         }
 
         button {
@@ -130,9 +162,27 @@
         }
 
         .error-message {
-            color: #e74c3c;
+            color: var(--error-color);
             text-align: center;
             margin: 1rem 0;
+            padding: 0.8rem;
+            background-color: rgba(231, 76, 60, 0.1);
+            border-radius: var(--border-radius);
+        }
+
+        .success-message {
+            color: var(--success-color);
+            text-align: center;
+            margin: 1rem 0;
+            padding: 0.8rem;
+            background-color: rgba(46, 204, 113, 0.1);
+            border-radius: var(--border-radius);
+        }
+
+        .section-title {
+            color: var(--secondary-color);
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
         }
 
         footer {
@@ -152,11 +202,11 @@
                 font-size: 1.5rem;
             }
             
-            .search-container {
+            .search-container, .upload-container {
                 padding: 1.5rem;
             }
 
-            .search-form {
+            .search-form, .upload-form {
                 flex-direction: column;
             }
 
@@ -177,6 +227,7 @@
     <main>
         <div class="container">
             <div class="search-container">
+                <h2 class="section-title">Rechercher dans les documents</h2>
                 <form action="./formulaire" method="get" class="search-form">
                     <input type="search" id="query" name="query" required 
                            placeholder="Entrez votre recherche..."
@@ -191,6 +242,34 @@
                 </form>
             </div>
 
+            <div class="upload-container">
+                <h2 class="section-title">Ajouter un document</h2>
+                <form action="./upload" method="post" enctype="multipart/form-data" class="upload-form">
+                    <div class="file-input-container">
+                        <label for="file" class="file-input-label">
+                            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 5v14M5 12h14"/>
+                            </svg>
+                            Choisir un fichier texte (.txt)
+                        </label>
+                        <input type="file" id="file" name="file" accept=".txt" required>
+                    </div>
+                    <button type="submit">Télécharger</button>
+                </form>
+            </div>
+
+            {% if upload_error %}
+            <div class="error-message">
+                {{ upload_error }}
+            </div>
+            {% endif %}
+
+            {% if upload_success %}
+            <div class="success-message">
+                {{ upload_success }}
+            </div>
+            {% endif %}
+
             {% if error %}
             <div class="error-message">
                 {{ error }}
@@ -201,7 +280,7 @@
             <div class="results">
                 {% for result in results %}
                 <div class="result-item">
-                    <h3>Document {{ result.doc_id[-1] }}</h3>
+                    <h3>Document {{ result.doc_id[-1] if result.doc_id.startswith('document') else result.doc_id }}</h3>
                     <p class="result-excerpt">{{ result.excerpt }}</p>
                 </div>
                 {% endfor %}

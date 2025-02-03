@@ -1,7 +1,15 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for
 import re
+import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'documents'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
+
+# Créer le dossier documents s'il n'existe pas
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
 
 # Base de documents pour la recherche
 documents = {
@@ -32,14 +40,22 @@ Its mission to pursue research mirrors that of companies like OpenAI, the Silico
 DeepSeek also said it built its new A.I. technology more cost effectively and with fewer hard-to-get computers chips than its American competitors, shocking an industry that had come to believe that bigger and better A.I. would cost billions and billions of dollars.'''
 }
 
+def load_documents():
+    """Charger les documents depuis le dossier documents"""
+    for filename in os.listdir(app.config['UPLOAD_FOLDER']):
+        if filename.endswith('.txt'):
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            with open(file_path, 'r', encoding='utf-8') as f:
+                doc_id = os.path.splitext(filename)[0]
+                documents[doc_id] = f.read()
+
 def search_documents(query):
+    """Rechercher dans les documents"""
     results = []
     query = query.lower()
     
     for doc_id, content in documents.items():
-        # Recherche simple par correspondance de mots
         if query in content.lower():
-            # Extraire un extrait pertinent
             words = content.split()
             for i, word in enumerate(words):
                 if query in word.lower():
@@ -60,13 +76,30 @@ def Index():
 
 @app.route('/formulaire', methods=["GET", "POST"])
 def search():
-    # Récupérer la requête soit depuis GET soit depuis POST
     query = request.args.get('query', '') if request.method == 'GET' else request.form.get('query', '')
     if not query:
         return render_template("index.html", error="Veuillez entrer un terme de recherche")
     
+    # Recharger les documents avant chaque recherche
+    load_documents()
     results = search_documents(query)
     return render_template("index.html", results=results, query=query)
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return render_template("index.html", upload_error="Aucun fichier n'a été sélectionné")
+    
+    file = request.files['file']
+    if file.filename == '':
+        return render_template("index.html", upload_error="Aucun fichier n'a été sélectionné")
+    
+    if file and file.filename.endswith('.txt'):
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        return render_template("index.html", upload_success=f"Le fichier {filename} a été téléchargé avec succès")
+    else:
+        return render_template("index.html", upload_error="Seuls les fichiers .txt sont acceptés")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)
